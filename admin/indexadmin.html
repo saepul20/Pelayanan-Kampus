@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dashboard Admin TI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  </head>
+  <body class="bg-gray-50 text-gray-800">
+    <!-- Navbar -->
+    <nav class="bg-white shadow-sm border-b sticky top-0 z-50">
+      <div
+        class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center"
+      >
+        <h1 class="text-xl font-semibold">UINSolve | Admin Dashboard</h1>
+        <!-- <div class="text-sm text-gray-600">Admin</div> -->
+        <a href="../signin.html" class="text-sm text-blue-600 hover:underline"
+          >Logout</a
+        >
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-6 py-8 space-y-10">
+      <!-- Ringkasan Kartu -->
+      <section class="grid grid-cols-2 md:grid-cols-4 gap-6">
+        <div class="bg-white p-4 rounded-xl shadow text-center">
+          <h2 class="text-gray-500 text-sm">Total Insiden</h2>
+          <p id="totalInsiden" class="text-2xl font-bold">0</p>
+        </div>
+        <div class="bg-white p-4 rounded-xl shadow text-center">
+          <h2 class="text-gray-500 text-sm">Permintaan Layanan</h2>
+          <p id="totalPermintaan" class="text-2xl font-bold">0</p>
+        </div>
+        <div class="bg-white p-4 rounded-xl shadow text-center">
+          <h2 class="text-gray-500 text-sm">Masalah</h2>
+          <p id="totalMasalah" class="text-2xl font-bold">0</p>
+        </div>
+        <div class="bg-white p-4 rounded-xl shadow text-center">
+          <h2 class="text-gray-500 text-sm">Selesai</h2>
+          <p id="totalSelesai" class="text-2xl font-bold">0</p>
+        </div>
+      </section>
+
+      <!-- Grafik Performa -->
+      <section class="bg-white p-6 rounded-xl shadow">
+        <h2 class="text-lg font-semibold mb-4">Grafik Performa Layanan TI</h2>
+        <canvas id="serviceChart" class="w-full h-64"></canvas>
+      </section>
+
+      <!-- Modul lainnya -->
+      <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <a
+          href="insiden-admin.html"
+          class="bg-white p-6 rounded-xl shadow hover:shadow-md transition"
+        >
+          <h3 class="text-lg font-semibold mb-2">Manajemen Insiden</h3>
+          <p class="text-sm text-gray-600">Lihat dan tangani insiden masuk</p>
+        </a>
+        <a
+          href="pelayanan-admin.html"
+          class="bg-white p-6 rounded-xl shadow hover:shadow-md transition"
+        >
+          <h3 class="text-lg font-semibold mb-2">Permintaan Layanan</h3>
+          <p class="text-sm text-gray-600">Kelola permintaan pengguna</p>
+        </a>
+        <a
+          href="masalahadmin.html"
+          class="bg-white p-6 rounded-xl shadow hover:shadow-md transition"
+        >
+          <h3 class="text-lg font-semibold mb-2">Manajemen Masalah</h3>
+          <p class="text-sm text-gray-600">Analisis masalah berulang</p>
+        </a>
+        <a
+          href="pelaporanadmin.html"
+          class="bg-white p-6 rounded-xl shadow hover:shadow-md transition"
+        >
+          <h3 class="text-lg font-semibold mb-2">Modul Pelaporan</h3>
+          <p class="text-sm text-gray-600">Laporan bulanan & riwayat</p>
+        </a>
+        <a
+          href="penggunaadmin.html"
+          class="bg-white p-6 rounded-xl shadow hover:shadow-md transition"
+        >
+          <h3 class="text-lg font-semibold mb-2">Manajemen Pengguna</h3>
+          <p class="text-sm text-gray-600">Atur akun dan role pengguna</p>
+        </a>
+      </section>
+    </main>
+
+    <!-- Firebase & Chart -->
+    <!-- Firebase Config -->
+    <script src="https://www.gstatic.com/firebasejs/10.10.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore-compat.js"></script>
+
+    <script>
+      const firebaseConfig = {
+        apiKey: "AIzaSyBFlphgO7PoiZ_M_zgmMwXGZ-9Ef_cbcpQ",
+        authDomain: "uinsolve.firebaseapp.com",
+        projectId: "uinsolve",
+        storageBucket: "uinsolve.appspot.com",
+        messagingSenderId: "649550938012",
+        appId: "1:649550938012:web:26bd721c2f42febf865259",
+        measurementId: "G-76W5Y9D5S8",
+      };
+
+      firebase.initializeApp(firebaseConfig);
+      const db = firebase.firestore();
+
+      async function muatRingkasanDashboard() {
+        const insidenSnapshot = await db.collection("insiden").get();
+        const pelayananSnapshot = await db.collection("pelayanan").get();
+
+        const totalInsiden = insidenSnapshot.size;
+        const totalPermintaan = pelayananSnapshot.size;
+        const totalMasalah = totalInsiden + totalPermintaan;
+
+        let totalSelesai = 0;
+
+        insidenSnapshot.forEach((doc) => {
+          if (doc.data().status === "Selesai") totalSelesai++;
+        });
+
+        pelayananSnapshot.forEach((doc) => {
+          if (doc.data().status === "Selesai") totalSelesai++;
+        });
+
+        // Update UI
+        document.getElementById("totalInsiden").textContent = totalInsiden;
+        document.getElementById("totalPermintaan").textContent =
+          totalPermintaan;
+        document.getElementById("totalMasalah").textContent = totalMasalah;
+        document.getElementById("totalSelesai").textContent = totalSelesai;
+
+        // Opsional: render grafik performa
+        renderChart(totalInsiden, totalPermintaan, totalSelesai);
+      }
+
+      function renderChart(insiden, permintaan, selesai) {
+        const ctx = document.getElementById("serviceChart").getContext("2d");
+        new Chart(ctx, {
+          type: "bar",
+          data: {
+            labels: ["Insiden", "Permintaan", "Selesai"],
+            datasets: [
+              {
+                label: "Jumlah",
+                data: [insiden, permintaan, selesai],
+                backgroundColor: ["#f97316", "#3b82f6", "#22c55e"],
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: { display: false },
+              title: { display: true, text: "Ringkasan Layanan TI" },
+            },
+          },
+        });
+      }
+
+      // Panggil fungsi utama
+      muatRingkasanDashboard();
+    </script>
+  </body>
+</html>

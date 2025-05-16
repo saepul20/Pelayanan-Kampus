@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Manajemen Insiden | UINSolve</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-gray-100 text-gray-800">
+    <header class="bg-white shadow p-4 flex justify-between items-center">
+      <h1 class="text-lg font-bold text-blue-700">
+        UINSolve | Manajemen Insiden
+      </h1>
+      <a href="indexadmin.html" class="text-sm text-blue-600 hover:underline"
+        >← Kembali ke Dashboard</a
+      >
+    </header>
+
+    <main class="p-6">
+      <h2 class="text-xl font-semibold mb-4">Daftar Laporan Insiden Masuk</h2>
+      <div class="overflow-x-auto bg-white rounded shadow">
+        <table class="min-w-full text-sm">
+          <thead class="bg-gray-200">
+            <tr>
+              <th class="p-3 text-left">#</th>
+              <th class="p-3 text-left">Judul</th>
+              <th class="p-3 text-left">Kategori</th>
+              <th class="p-3 text-left">Status</th>
+              <th class="p-3 text-left">Tanggal</th>
+            </tr>
+          </thead>
+          <tbody id="tabelInsiden"></tbody>
+        </table>
+      </div>
+    </main>
+
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/11.7.1/firebase-app.js";
+      import {
+        getFirestore,
+        collection,
+        getDocs,
+        query,
+        orderBy,
+        updateDoc,
+        doc,
+      } from "https://www.gstatic.com/firebasejs/11.7.1/firebase-firestore.js";
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyBFlphgO7PoiZ_M_zgmMwXGZ-9Ef_cbcpQ", // Sesuaikan dengan API key Anda
+        authDomain: "uinsolve.firebaseapp.com",
+        projectId: "uinsolve",
+        storageBucket: "uinsolve.appspot.com",
+        messagingSenderId: "649550938012",
+        appId: "1:649550938012:web:26bd721c2f42febf865259",
+        measurementId: "G-76W5Y9D5S8",
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
+
+      async function loadInsiden() {
+        const q = query(collection(db, "insiden"), orderBy("tanggal", "desc"));
+        const snapshot = await getDocs(q);
+        const tbody = document.getElementById("tabelInsiden");
+        tbody.innerHTML = "";
+
+        let no = 1;
+        snapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          const id = docSnap.id;
+
+          // 🔧 Format tanggal (support Timestamp dan string)
+          let tanggal = "-";
+          if (data.tanggal?.toDate) {
+            tanggal = data.tanggal.toDate().toLocaleString("id-ID");
+          } else if (typeof data.tanggal === "string") {
+            tanggal = data.tanggal;
+          }
+
+          tbody.innerHTML += `
+      <tr class="border-b">
+        <td class="p-3">${no++}</td>
+        <td class="p-3">${data.judul}</td>
+        <td class="p-3">${data.kategori}</td>
+        <td class="p-3">
+          <select class="border rounded px-2 py-1" onchange="ubahStatus('${id}', this.value)">
+            <option value="Baru" ${
+              data.status === "Baru" ? "selected" : ""
+            }>Baru</option>
+            <option value="Diproses" ${
+              data.status === "Diproses" ? "selected" : ""
+            }>Diproses</option>
+            <option value="Selesai" ${
+              data.status === "Selesai" ? "selected" : ""
+            }>Selesai</option>
+          </select>
+        </td>
+        <td class="p-3">${tanggal}</td>
+      </tr>
+    `;
+        });
+      }
+
+      window.ubahStatus = async function (id, statusBaru) {
+        const ref = doc(db, "insiden", id);
+        await updateDoc(ref, { status: statusBaru });
+        loadInsiden(); // Refresh tabel setelah update
+      };
+
+      loadInsiden();
+    </script>
+  </body>
+</html>

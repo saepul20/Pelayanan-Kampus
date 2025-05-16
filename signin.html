@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sign In | UINSolve</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="flex items-center justify-center h-screen bg-gray-100">
+    <form
+      id="signinForm"
+      class="bg-white p-6 rounded shadow w-full max-w-sm space-y-4"
+    >
+      <h2 class="text-xl font-semibold text-center">Masuk ke UINSolve</h2>
+      <input
+        type="email"
+        id="email"
+        placeholder="Email"
+        required
+        class="w-full p-2 border rounded"
+      />
+      <input
+        type="password"
+        id="password"
+        placeholder="Password"
+        required
+        class="w-full p-2 border rounded"
+      />
+      <button
+        type="submit"
+        class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+      >
+        Masuk
+      </button>
+      <p class="text-sm text-center">
+        Belum punya akun? <a href="signup.html" class="text-blue-600">Daftar</a>
+      </p>
+    </form>
+
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/11.7.1/firebase-app.js";
+      import {
+        getAuth,
+        signInWithEmailAndPassword,
+      } from "https://www.gstatic.com/firebasejs/11.7.1/firebase-auth.js";
+      import {
+        getFirestore,
+        collection,
+        getDocs,
+        query,
+        where,
+      } from "https://www.gstatic.com/firebasejs/11.7.1/firebase-firestore.js";
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyBFlphgO7PoiZ_M_zgmMwXGZ-9Ef_cbcpQ",
+        authDomain: "uinsolve.firebaseapp.com",
+        projectId: "uinsolve",
+        storageBucket: "uinsolve.appspot.com",
+        messagingSenderId: "649550938012",
+        appId: "1:649550938012:web:26bd721c2f42febf865259",
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      const db = getFirestore(app);
+
+      const form = document.getElementById("signinForm");
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const email = form.email.value;
+        const password = form.password.value;
+
+        try {
+          const userCredential = await signInWithEmailAndPassword(
+            auth,
+            email,
+            password
+          );
+          const uid = userCredential.user.uid;
+
+          const q = query(collection(db, "users"), where("uid", "==", uid));
+          const querySnapshot = await getDocs(q);
+          let userRole = "user";
+          querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            userRole = data.role;
+          });
+
+          if (userRole === "admin") {
+            window.location.href = "admin/indexadmin.html";
+          } else {
+            window.location.href = "user/index.html";
+          }
+        } catch (error) {
+          alert("Gagal login: " + error.message);
+        }
+      });
+    </script>
+  </body>
+</html>

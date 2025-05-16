@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sign Up | UINSolve</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="flex items-center justify-center h-screen bg-gray-100">
+    <form
+      id="signupForm"
+      class="bg-white p-6 rounded shadow w-full max-w-sm space-y-4"
+    >
+      <h2 class="text-xl font-semibold text-center">Daftar Akun Baru</h2>
+      <input
+        type="text"
+        id="name"
+        placeholder="Nama Lengkap"
+        required
+        class="w-full p-2 border rounded"
+      />
+      <input
+        type="email"
+        id="email"
+        placeholder="Email"
+        required
+        class="w-full p-2 border rounded"
+      />
+      <input
+        type="password"
+        id="password"
+        placeholder="Password"
+        required
+        class="w-full p-2 border rounded"
+      />
+      <!-- <select id="role" class="w-full p-2 border rounded" required>
+        <option value="">Pilih Role</option>
+        <option value="admin">Admin</option>
+        <option value="user">User</option>
+      </select> -->
+      <button
+        type="submit"
+        class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+      >
+        Daftar
+      </button>
+      <p class="text-sm text-center">
+        Sudah punya akun? <a href="signin.html" class="text-blue-600">Masuk</a>
+      </p>
+    </form>
+
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/11.7.1/firebase-app.js";
+      import {
+        getAuth,
+        createUserWithEmailAndPassword,
+      } from "https://www.gstatic.com/firebasejs/11.7.1/firebase-auth.js";
+      import {
+        getFirestore,
+        collection,
+        addDoc,
+      } from "https://www.gstatic.com/firebasejs/11.7.1/firebase-firestore.js";
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyBFlphgO7PoiZ_M_zgmMwXGZ-9Ef_cbcpQ",
+        authDomain: "uinsolve.firebaseapp.com",
+        projectId: "uinsolve",
+        storageBucket: "uinsolve.appspot.com",
+        messagingSenderId: "649550938012",
+        appId: "1:649550938012:web:26bd721c2f42febf865259",
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      const db = getFirestore(app);
+
+      const form = document.getElementById("signupForm");
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const name = form.name.value.trim();
+        const email = form.email.value;
+        const password = form.password.value;
+        const role = form.role.value;
+
+        try {
+          const userCredential = await createUserWithEmailAndPassword(
+            auth,
+            email,
+            password
+          );
+          const uid = userCredential.user.uid;
+
+          await addDoc(collection(db, "users"), {
+            uid,
+            name,
+            email,
+            role,
+          });
+
+          alert("Akun berhasil dibuat! Silakan login.");
+          window.location.href = "signin.html";
+        } catch (error) {
+          alert("Error: " + error.message);
+        }
+      });
+    </script>
+  </body>
+</html>

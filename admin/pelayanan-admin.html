@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Manajemen Permintaan Layanan | UINSolve</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-gray-100 text-gray-800">
+    <!-- Header -->
+    <header class="bg-white shadow p-4 flex justify-between items-center">
+      <h1 class="text-lg font-bold text-blue-700">
+        UINSolve | Permintaan Layanan
+      </h1>
+      <a href="indexadmin.html" class="text-sm text-blue-600 hover:underline"
+        >← Kembali ke Dashboard</a
+      >
+    </header>
+
+    <!-- Main content -->
+    <main class="p-6">
+      <h2 class="text-xl font-semibold mb-4">Daftar Permintaan Layanan</h2>
+
+      <!-- Table -->
+      <div class="overflow-x-auto bg-white rounded shadow">
+        <table class="min-w-full text-sm">
+          <thead class="bg-gray-200">
+            <tr>
+              <th class="p-3 text-left">#</th>
+              <th class="p-3 text-left">Nama Pengguna</th>
+              <th class="p-3 text-left">Jenis Layanan</th>
+              <th class="p-3 text-left">Deskripsi</th>
+              <th class="p-3 text-left">Status</th>
+              <th class="p-3 text-left">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="permintaanBody">
+            <tr>
+              <td colspan="6" class="p-3 text-center text-gray-500">
+                Memuat data...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+
+    <!-- Firebase -->
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/11.7.1/firebase-app.js";
+      import {
+        getFirestore,
+        collection,
+        getDocs,
+        doc,
+        updateDoc,
+      } from "https://www.gstatic.com/firebasejs/11.7.1/firebase-firestore.js";
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyBFlphgO7PoiZ_M_zgmMwXGZ-9Ef_cbcpQ",
+        authDomain: "uinsolve.firebaseapp.com",
+        projectId: "uinsolve",
+        storageBucket: "uinsolve.appspot.com",
+        messagingSenderId: "649550938012",
+        appId: "1:649550938012:web:26bd721c2f42febf865259",
+        measurementId: "G-76W5Y9D5S8",
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
+
+      async function loadPermintaan() {
+        const tbody = document.getElementById("permintaanBody");
+        tbody.innerHTML = "";
+
+        const snapshot = await getDocs(collection(db, "pelayanan"));
+
+        if (snapshot.empty) {
+          tbody.innerHTML =
+            "<tr><td colspan='6' class='p-3 text-center text-gray-500'>Belum ada permintaan.</td></tr>";
+          return;
+        }
+
+        let index = 1;
+        snapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          const row = document.createElement("tr");
+          row.className = "border-b hover:bg-gray-50";
+
+          row.innerHTML = `
+            <td class="p-3">${index++}</td>
+            <td class="p-3">${data.nama || "-"}</td>
+            <td class="p-3">${data.judul || "-"}</td>
+            <td class="p-3">${data.deskripsi || "-"}</td>
+            <td class="p-3">
+              <span class="px-2 py-1 rounded text-white ${getStatusColor(
+                data.status
+              )}">
+                ${data.status}
+              </span>
+            </td>
+            <td class="p-3">
+              <button class="text-blue-600 hover:underline" onclick="prosesStatus('${
+                docSnap.id
+              }', '${data.status}')">
+                Proses
+              </button>
+            </td>
+          `;
+          tbody.appendChild(row);
+        });
+      }
+
+      function getStatusColor(status) {
+        switch (status) {
+          case "Baru":
+            return "bg-red-500";
+          case "Diproses":
+            return "bg-yellow-500";
+          case "Selesai":
+            return "bg-green-600";
+          default:
+            return "bg-gray-400";
+        }
+      }
+
+      window.prosesStatus = async function (docId, currentStatus) {
+        const nextStatus =
+          currentStatus === "Baru"
+            ? "Diproses"
+            : currentStatus === "Diproses"
+            ? "Selesai"
+            : "Selesai";
+
+        if (currentStatus === "Selesai") {
+          alert("Permintaan telah selesai diproses.");
+          return;
+        }
+
+        const ref = doc(db, "pelayanan", docId);
+        await updateDoc(ref, { status: nextStatus });
+        loadPermintaan();
+      };
+      loadPermintaan();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lapor Insiden TI | UINSolve</title>
+    <link rel="icon" href="favicon.ico" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <meta
+      name="description"
+      content="Formulir pelaporan insiden teknologi informasi untuk civitas akademika UIN."
+    />
+  </head>
+  <body class="bg-gray-50 text-gray-800 font-sans min-h-screen">
+    <!-- Navbar -->
+    <nav class="bg-white shadow-sm border-b">
+      <div
+        class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center"
+      >
+        <div class="flex items-center gap-2">
+          <h1 class="text-xl font-semibold">UINSolve | Lapor Insiden TI</h1>
+        </div>
+        <div class="space-x-6 text-sm text-gray-600 hidden md:flex">
+          <a href="index.html" class="hover:text-black">Dashboard</a>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main
+      class="max-w-7xl mx-auto px-6 py-10 grid grid-cols-1 lg:grid-cols-3 gap-8"
+    >
+      <!-- Form Laporan -->
+      <section class="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border">
+        <h2 class="text-xl font-semibold mb-6 border-b pb-3">
+          Formulir Laporan Insiden
+        </h2>
+        <form id="formInsiden" class="space-y-6">
+          <div>
+            <label for="judul" class="block mb-1 text-sm font-medium"
+              >Judul Insiden</label
+            >
+            <input
+              type="text"
+              id="judul"
+              placeholder="Contoh: Email tidak bisa diakses"
+              required
+              class="w-full px-4 py-3 border rounded-md focus:outline-none focus:ring-2 ring-blue-500"
+            />
+          </div>
+
+          <div>
+            <label for="deskripsi" class="block mb-1 text-sm font-medium"
+              >Deskripsi Insiden</label
+            >
+            <textarea
+              id="deskripsi"
+              rows="4"
+              placeholder="Jelaskan detail masalah yang Anda alami..."
+              required
+              class="w-full px-4 py-3 border rounded-md focus:outline-none focus:ring-2 ring-blue-500"
+            ></textarea>
+          </div>
+
+          <div>
+            <label for="kategori" class="block mb-1 text-sm font-medium"
+              >Kategori</label
+            >
+            <select
+              id="kategori"
+              required
+              class="w-full px-4 py-3 border rounded-md focus:ring-2 ring-blue-500"
+            >
+              <option disabled selected>Pilih Kategori</option>
+              <option>Email tidak bisa diakses</option>
+              <option>Masalah jaringan</option>
+              <option>Kerusakan hardware</option>
+              <option>Aplikasi error</option>
+            </select>
+          </div>
+
+          <button
+            type="submit"
+            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-md transition duration-300"
+          >
+            Kirim Laporan
+          </button>
+        </form>
+      </section>
+
+      <!-- Riwayat Laporan -->
+      <section class="bg-white p-6 rounded-xl shadow-sm border">
+        <h2 class="text-xl font-semibold mb-4 border-b pb-3">
+          Riwayat Laporan Anda
+        </h2>
+        <div id="riwayatContainer" class="space-y-4 text-sm">
+          <!-- Riwayat akan dimuat di sini -->
+        </div>
+        <div class="mt-4">
+          <a
+            href="riwayat-insiden.html"
+            class="text-blue-600 hover:underline text-sm inline-block"
+            >Lihat semua laporan →</a
+          >
+        </div>
+      </section>
+    </main>
+
+    <!-- Toast Notification -->
+    <div
+      id="toast"
+      class="fixed bottom-6 right-6 bg-green-600 text-white px-4 py-3 rounded-md shadow-lg hidden opacity-0 transition-opacity duration-500 z-50"
+    >
+      Laporan berhasil dikirim!
+    </div>
+
+    <!-- Firebase -->
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/11.7.1/firebase-app.js";
+      import {
+        getFirestore,
+        collection,
+        addDoc,
+        query,
+        where,
+        orderBy,
+        limit,
+        getDocs,
+        Timestamp,
+      } from "https://www.gstatic.com/firebasejs/11.7.1/firebase-firestore.js";
+      import {
+        getAuth,
+        onAuthStateChanged,
+      } from "https://www.gstatic.com/firebasejs/11.7.1/firebase-auth.js";
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyBFlphgO7PoiZ_M_zgmMwXGZ-9Ef_cbcpQ",
+        authDomain: "uinsolve.firebaseapp.com",
+        projectId: "uinsolve",
+        storageBucket: "uinsolve.appspot.com",
+        messagingSenderId: "649550938012",
+        appId: "1:649550938012:web:26bd721c2f42febf865259",
+        measurementId: "G-76W5Y9D5S8",
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
+      const auth = getAuth(app);
+
+      const form = document.getElementById("formInsiden");
+      const toast = document.getElementById("toast");
+      let currentUser = null;
+
+      // Fungsi untuk memuat riwayat laporan
+      async function muatRiwayatLaporan(uid) {
+        const container = document.getElementById("riwayatContainer");
+        container.innerHTML = "";
+
+        const q = query(
+          collection(db, "insiden"),
+          where("uid", "==", uid),
+          orderBy("tanggal", "desc"),
+          limit(3)
+        );
+
+        const snapshot = await getDocs(q);
+
+        if (snapshot.empty) {
+          container.innerHTML = `<p class="text-gray-500 text-sm">Belum ada laporan.</p>`;
+          return;
+        }
+
+        snapshot.forEach((doc) => {
+          const data = doc.data();
+
+          let tanggal = "Tanggal tidak tersedia";
+          if (data.tanggal instanceof Timestamp) {
+            tanggal = data.tanggal.toDate().toLocaleDateString("id-ID");
+          }
+
+          container.innerHTML += `
+        <div class="border p-4 rounded-md bg-gray-50">
+          <div class="flex justify-between items-center mb-1">
+            <strong class="text-gray-800">${data.judul}</strong>
+            <span class="text-xs px-2 py-1 ${
+              data.status === "Diproses"
+                ? "bg-yellow-100 text-yellow-800"
+                : "bg-gray-200 text-gray-800"
+            } rounded-full">${data.status}</span>
+          </div>
+          <p class="text-gray-600 text-sm">${data.deskripsi}</p>
+          <p class="text-xs text-gray-400 mt-2">Dilaporkan: ${tanggal}</p>
+        </div>
+      `;
+        });
+      }
+
+      // Cek autentikasi
+      onAuthStateChanged(auth, (user) => {
+        if (user) {
+          currentUser = user;
+          muatRiwayatLaporan(user.uid);
+        } else {
+          window.location.href = "signin.html";
+        }
+      });
+
+      // Submit Form
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        if (!currentUser) return;
+
+        const judul = document.getElementById("judul").value;
+        const deskripsi = document.getElementById("deskripsi").value;
+        const kategori = document.getElementById("kategori").value;
+        const tanggal = Timestamp.now();
+
+        await addDoc(collection(db, "insiden"), {
+          uid: currentUser.uid,
+          judul,
+          deskripsi,
+          kategori,
+          status: "Baru",
+          tanggal,
+        });
+
+        toast.classList.remove("hidden");
+        toast.classList.add("opacity-100");
+        setTimeout(() => {
+          toast.classList.remove("opacity-100");
+          toast.classList.add("opacity-0");
+          setTimeout(() => toast.classList.add("hidden"), 500);
+        }, 3000);
+
+        form.reset();
+        muatRiwayatLaporan(currentUser.uid);
+      });
+    </script>
+  </body>
+</html>

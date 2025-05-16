@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Manajemen Pengguna | UINSolve</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-gray-100 text-gray-800">
+    <header class="bg-white shadow p-4 flex justify-between items-center">
+      <h1 class="text-lg font-bold text-blue-700">
+        UINSolve | Manajemen Pengguna
+      </h1>
+      <a href="indexadmin.html" class="text-sm text-blue-600 hover:underline"
+        >← Kembali ke Dashboard</a
+      >
+    </header>
+
+    <main class="p-6 space-y-6">
+      <!-- Form Tambah User -->
+      <section class="bg-white p-4 rounded shadow">
+        <h2 class="text-xl font-semibold mb-3">Tambah Pengguna Baru</h2>
+        <form id="userForm" class="flex flex-col sm:flex-row gap-4">
+          <input
+            type="text"
+            id="username"
+            placeholder="Nama Pengguna"
+            class="flex-1 p-2 border rounded"
+            required
+          />
+          <select id="role" class="p-2 border rounded" required>
+            <option value="">Pilih Role</option>
+            <option value="admin">Admin</option>
+            <option value="user">User</option>
+          </select>
+          <button
+            type="submit"
+            class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          >
+            Tambah
+          </button>
+        </form>
+      </section>
+
+      <!-- Daftar User -->
+      <section class="bg-white p-4 rounded shadow">
+        <h2 class="text-xl font-semibold mb-3">Daftar Pengguna</h2>
+        <table class="min-w-full text-sm">
+          <thead class="bg-gray-200">
+            <tr>
+              <th class="p-3 text-left">#</th>
+              <th class="p-3 text-left">Nama</th>
+              <th class="p-3 text-left">Role</th>
+              <th class="p-3 text-left">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="userList">
+            <!-- User akan ditambahkan di sini -->
+          </tbody>
+        </table>
+      </section>
+    </main>
+
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/11.7.1/firebase-app.js";
+      import {
+        getFirestore,
+        collection,
+        getDocs,
+        addDoc,
+        updateDoc,
+        deleteDoc,
+        doc,
+      } from "https://www.gstatic.com/firebasejs/11.7.1/firebase-firestore.js";
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyBFlphgO7PoiZ_M_zgmMwXGZ-9Ef_cbcpQ",
+        authDomain: "uinsolve.firebaseapp.com",
+        projectId: "uinsolve",
+        storageBucket: "uinsolve.appspot.com",
+        messagingSenderId: "649550938012",
+        appId: "1:649550938012:web:26bd721c2f42febf865259",
+        measurementId: "G-76W5Y9D5S8",
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
+
+      const userForm = document.getElementById("userForm");
+      const userList = document.getElementById("userList");
+
+      // Ambil data user dari Firestore
+      async function fetchUsers() {
+        const querySnapshot = await getDocs(collection(db, "users"));
+        userList.innerHTML = "";
+        querySnapshot.forEach((docSnap, index) => {
+          const user = docSnap.data();
+          userList.innerHTML += `
+        <tr class="border-b">
+          <td class="p-3">${index + 1}</td>
+          <td class="p-3">${user.name}</td>
+          <td class="p-3">
+            <select onchange="updateRole('${
+              docSnap.id
+            }', this.value)" class="p-1 border rounded">
+              <option value="admin" ${
+                user.role === "admin" ? "selected" : ""
+              }>Admin</option>
+              <option value="user" ${
+                user.role === "user" ? "selected" : ""
+              }>User</option>
+            </select>
+          </td>
+          <td class="p-3">
+            <button onclick="deleteUser('${
+              docSnap.id
+            }')" class="text-red-600 hover:underline">Hapus</button>
+          </td>
+        </tr>
+      `;
+        });
+      }
+
+      // Tambah user ke Firestore
+      userForm.addEventListener("submit", async function (e) {
+        e.preventDefault();
+        const name = document.getElementById("username").value.trim();
+        const role = document.getElementById("role").value;
+
+        if (name && role) {
+          await addDoc(collection(db, "users"), { name, role });
+          userForm.reset();
+          fetchUsers();
+        }
+      });
+
+      // Hapus user dari Firestore
+      window.deleteUser = async function (id) {
+        if (confirm("Yakin ingin menghapus user ini?")) {
+          await deleteDoc(doc(db, "users", id));
+          fetchUsers();
+        }
+      };
+
+      // Update role user di Firestore
+      window.updateRole = async function (id, newRole) {
+        const userRef = doc(db, "users", id);
+        await updateDoc(userRef, { role: newRole });
+        alert("Role berhasil diperbarui!");
+      };
+
+      // Inisialisasi tampilan data
+      fetchUsers();
+    </script>
+  </body>
+</html>

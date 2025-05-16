@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Riwayat Permintaan Pelayanan - UINSolve</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        font-family: "Inter", sans-serif;
+      }
+    </style>
+  </head>
+  <body class="bg-gray-50 text-gray-800">
+    <!-- Navbar -->
+    <nav class="bg-white shadow-sm">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between h-16 items-center">
+          <span class="text-xl font-semibold text-indigo-600">UINSolve</span>
+          <div class="hidden md:flex md:space-x-6 ml-10">
+            <a
+              href="index.html"
+              class="text-gray-700 hover:text-indigo-600 font-medium"
+              >Dashboard</a
+            >
+            <a
+              href="pelayanan.html"
+              class="text-gray-700 hover:text-indigo-600 font-medium"
+              >Pelayanan</a
+            >
+            <a href="riwayat-insiden.html" class="text-indigo-600 font-semibold"
+              >Riwayat</a
+            >
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-5xl mx-auto px-6 py-10">
+      <h1 class="text-3xl font-bold text-center mb-8">
+        Riwayat Semua Permintaan Layanan
+      </h1>
+      <div id="riwayatContainer" class="space-y-4">
+        <p class="text-center text-gray-500">Memuat data...</p>
+      </div>
+    </main>
+
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/10.10.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.10.0/firebase-auth-compat.js"></script>
+
+    <script>
+      const firebaseConfig = {
+        apiKey: "AIzaSyBFlphgO7PoiZ_M_zgmMwXGZ-9Ef_cbcpQ",
+        authDomain: "uinsolve.firebaseapp.com",
+        projectId: "uinsolve",
+        storageBucket: "uinsolve.appspot.com",
+        messagingSenderId: "649550938012",
+        appId: "1:649550938012:web:26bd721c2f42febf865259",
+        measurementId: "G-76W5Y9D5S8",
+      };
+
+      firebase.initializeApp(firebaseConfig);
+      const db = firebase.firestore();
+      const auth = firebase.auth();
+
+      const form = document.getElementById("formInsiden");
+      const toast = document.getElementById("toast");
+      let currentUser = null;
+
+      // Tampilkan maksimal 3 laporan terbaru user
+      async function muatRiwayatLaporan(uid) {
+        const container = document.getElementById("riwayatContainer");
+        container.innerHTML = "";
+
+        const snapshot = await db
+          .collection("pelayanan")
+          .where("uid", "==", uid)
+          .orderBy("tanggal", "desc")
+
+          .get();
+
+        if (snapshot.empty) {
+          container.innerHTML =
+            '<p class="text-gray-500 text-sm">Belum ada laporan.</p>';
+          return;
+        }
+
+        snapshot.forEach((doc) => {
+          const data = doc.data();
+
+          // Cek dan konversi jika data.tanggal adalah string
+          let tanggal = "Tanggal tidak tersedia";
+          if (data.tanggal instanceof firebase.firestore.Timestamp) {
+            // Jika data.tanggal adalah Timestamp, langsung konversikan ke Date
+            tanggal = data.tanggal.toDate().toLocaleDateString("id-ID");
+          } else if (typeof data.tanggal === "string") {
+            // Jika tanggal disimpan sebagai string, coba konversi ke Timestamp
+            const parts = data.tanggal.split("/"); // Misalnya "14/5/2025"
+            if (parts.length === 3) {
+              const day = parts[0]; // "14"
+              const month = parts[1]; // "5"
+              const year = parts[2]; // "2025"
+
+              // Membuat tanggal dalam format "YYYY-MM-DD"
+              const formattedDate = `${year}-${month.padStart(
+                2,
+                "0"
+              )}-${day.padStart(2, "0")}`;
+              const parsedDate = new Date(formattedDate); // Ubah string menjadi Date
+
+              if (!isNaN(parsedDate.getTime())) {
+                // Mengubah kembali menjadi Timestamp Firestore
+                const timestamp =
+                  firebase.firestore.Timestamp.fromDate(parsedDate);
+                tanggal = timestamp.toDate().toLocaleDateString("id-ID");
+              } else {
+                console.error(
+                  "Tanggal dalam format string tidak valid:",
+                  data.tanggal
+                );
+              }
+            } else {
+              console.error(
+                "Tanggal dalam format string tidak valid:",
+                data.tanggal
+              );
+            }
+          } else if (data.tanggal && data.tanggal.toDate) {
+            // Tangani kemungkinan tipe lain seperti Firestore Timestamp dengan metode toDate()
+            tanggal = data.tanggal.toDate().toLocaleDateString("id-ID");
+          } else {
+            console.error("Tanggal bukan Timestamp yang valid", data.tanggal);
+          }
+
+          // Menampilkan hasil ke UI
+          container.innerHTML += `
+        <div class="border p-4 rounded-md bg-gray-50">
+          <div class="flex justify-between items-center mb-1">
+            <strong class="text-gray-800">${data.judul}</strong>
+            <span class="text-xs px-2 py-1 ${
+              data.status === "Diproses"
+                ? "bg-yellow-100 text-yellow-800"
+                : "bg-gray-200 text-gray-800"
+            } rounded-full">${data.status}</span>
+          </div>
+          <p class="text-gray-600 text-sm">${data.deskripsi}</p>
+          <p class="text-xs text-gray-400 mt-2">Dilaporkan: ${tanggal}</p>
+        </div>
+      `;
+        });
+      }
+
+      // Auth listener
+      auth.onAuthStateChanged((user) => {
+        if (user) {
+          currentUser = user;
+          muatRiwayatLaporan(user.uid);
+        } else {
+          window.location.href = "signin.html";
+        }
+      });
+
+      // Handle form submit
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        if (!currentUser) return;
+
+        const judul = document.getElementById("judul").value;
+        const deskripsi = document.getElementById("deskripsi").value;
+        const kategori = document.getElementById("kategori").value;
+        const tanggal = firebase.firestore.Timestamp.now();
+
+        await db.collection("insiden").add({
+          uid: currentUser.uid,
+          judul,
+          deskripsi,
+          kategori,
+          status: "Baru",
+          tanggal,
+        });
+
+        toast.classList.remove("hidden");
+        toast.classList.add("opacity-100");
+        setTimeout(() => {
+          toast.classList.remove("opacity-100");
+          toast.classList.add("opacity-0");
+          setTimeout(() => toast.classList.add("hidden"), 500);
+        }, 3000);
+
+        form.reset();
+        muatRiwayatLaporan(currentUser.uid);
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Manajemen Masalah | UINSolve</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-gray-100 text-gray-800">
+    <header class="bg-white shadow p-4 flex justify-between items-center">
+      <h1 class="text-lg font-bold text-red-600">
+        UINSolve | Manajemen Masalah
+      </h1>
+      <a href="indexadmin.html" class="text-sm text-blue-600 hover:underline"
+        >← Kembali ke Dashboard</a
+      >
+    </header>
+
+    <main class="p-6">
+      <h2 class="text-xl font-semibold mb-4">
+        Deteksi Insiden Berulang & Diagnosa Masalah
+      </h2>
+
+      <div class="overflow-x-auto bg-white rounded shadow">
+        <table class="min-w-full text-sm" id="tabelMasalah">
+          <thead class="bg-gray-200">
+            <tr>
+              <th class="p-3 text-left">#</th>
+              <th class="p-3 text-left">Kategori</th>
+              <th class="p-3 text-left">Frekuensi</th>
+              <th class="p-3 text-left">Diagnosa</th>
+              <th class="p-3 text-left">Solusi</th>
+              <th class="p-3 text-left">Aksi</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </main>
+
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+      import { Timestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+      import {
+        getFirestore,
+        collection,
+        getDocs,
+        query,
+        where,
+        addDoc,
+      } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyBFlphgO7PoiZ_M_zgmMwXGZ-9Ef_cbcpQ",
+        authDomain: "uinsolve.firebaseapp.com",
+        projectId: "uinsolve",
+        storageBucket: "uinsolve.appspot.com",
+        messagingSenderId: "649550938012",
+        appId: "1:649550938012:web:26bd721c2f42febf865259",
+        measurementId: "G-76W5Y9D5S8",
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
+
+      // 1. Hitung batas waktu: 7 hari ke belakang
+      const today = new Date();
+      const oneWeekAgo = new Date(today);
+      oneWeekAgo.setDate(today.getDate() - 7);
+
+      // 2. Query berdasarkan tanggal >= 1 minggu terakhir
+      const insidenRef = collection(db, "insiden");
+      const q = query(
+        insidenRef,
+        where("tanggal", ">=", Timestamp.fromDate(oneWeekAgo))
+      );
+      // pastikan tanggal disimpan dalam ISO string
+
+      const snapshot = await getDocs(q);
+
+      // 3. Kelompokkan kategori dan hitung frekuensi
+      const kategoriMap = new Map();
+
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        const kategori = data.kategori;
+
+        if (kategoriMap.has(kategori)) {
+          kategoriMap.set(kategori, kategoriMap.get(kategori) + 1);
+        } else {
+          kategoriMap.set(kategori, 1);
+        }
+      });
+
+      // 4. Tampilkan ke tabel
+      const tbody = document.querySelector("#tabelMasalah tbody");
+      let no = 1;
+
+      kategoriMap.forEach((jumlah, kategori) => {
+        const tr = document.createElement("tr");
+        tr.className = "border-b hover:bg-gray-50";
+        tr.innerHTML = `
+      <td class="p-3">${no++}</td>
+      <td class="p-3 kategori">${kategori}</td>
+      <td class="p-3 frekuensi">${jumlah} laporan dalam 1 minggu</td>
+      <td class="p-3"><textarea class="diagnosa border p-1 w-full rounded"></textarea></td>
+      <td class="p-3"><textarea class="solusi border p-1 w-full rounded"></textarea></td>
+      <td class="p-3"><button class="simpan px-2 py-1 bg-blue-500 text-white rounded">Simpan</button></td>
+    `;
+        tbody.appendChild(tr);
+      });
+
+      // 5. Simpan ke koleksi "masalah"
+      tbody.addEventListener("click", async (e) => {
+        if (e.target.classList.contains("simpan")) {
+          const row = e.target.closest("tr");
+          const kategori = row.querySelector(".kategori").innerText;
+          const frekuensi = row.querySelector(".frekuensi").innerText;
+          const diagnosa = row.querySelector(".diagnosa").value.trim();
+          const solusi = row.querySelector(".solusi").value.trim();
+
+          if (!diagnosa || !solusi) {
+            alert("Diagnosa dan Solusi wajib diisi!");
+            return;
+          }
+
+          await addDoc(collection(db, "masalah"), {
+            kategori,
+            frekuensi,
+            diagnosa,
+            solusi,
+          });
+
+          alert("Data berhasil disimpan!");
+          e.target.disabled = true;
+          e.target.innerText = "✅ Tersimpan";
+          e.target.classList.remove("bg-blue-500");
+          e.target.classList.add("bg-green-500");
+        }
+      });
+    </script>
+  </body>
+</html>

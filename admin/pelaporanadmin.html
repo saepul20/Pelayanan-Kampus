@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pelaporan Layanan TI | UINSolve</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    <link rel="icon" href="favicon.ico" />
+  </head>
+  <body class="bg-gray-50 text-gray-800">
+    <!-- Navbar -->
+    <nav class="bg-white shadow-sm border-b">
+      <div
+        class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center"
+      >
+        <h1 class="text-xl font-semibold">
+          UINSolve | Laporan Kinerja Layanan
+        </h1>
+        <a href="indexadmin.html" class="text-sm text-blue-600 hover:underline"
+          >Kembali ke Dashboard</a
+        >
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto p-6 space-y-8">
+      <!-- Ringkasan -->
+      <section>
+        <h2 class="text-2xl font-bold mb-4">Ringkasan Kinerja</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div class="bg-white p-4 rounded-xl shadow border">
+            <p class="text-sm text-gray-600">Total Insiden</p>
+            <h3 class="text-2xl font-bold" id="totalInsiden">0</h3>
+          </div>
+          <div class="bg-white p-4 rounded-xl shadow border">
+            <p class="text-sm text-gray-600">Total Permintaan</p>
+            <h3 class="text-2xl font-bold" id="totalPermintaan">0</h3>
+          </div>
+          <div class="bg-white p-4 rounded-xl shadow border">
+            <p class="text-sm text-gray-600">Selesai</p>
+            <h3 class="text-2xl font-bold" id="totalSelesai">0</h3>
+          </div>
+        </div>
+      </section>
+
+      <!-- Grafik Status -->
+      <section>
+        <h2 class="text-xl font-semibold mb-4">Statistik Status</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div
+            class="bg-white p-4 rounded-xl shadow border flex justify-center"
+          >
+            <canvas
+              id="grafikStatusInsiden"
+              class="max-w-[280px] max-h-[280px]"
+            ></canvas>
+          </div>
+          <div
+            class="bg-white p-4 rounded-xl shadow border flex justify-center"
+          >
+            <canvas
+              id="grafikStatusPermintaan"
+              class="max-w-[280px] max-h-[280px]"
+            ></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tabel -->
+      <section>
+        <div class="flex justify-between items-center mb-3">
+          <h2 class="text-xl font-semibold">Laporan Terbaru</h2>
+          <div class="space-x-2">
+            <button
+              onclick="eksporPDF()"
+              class="px-4 py-2 bg-red-600 text-white rounded"
+            >
+              PDF
+            </button>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table
+            class="min-w-full text-sm bg-white shadow border rounded-xl"
+            id="tabelLaporan"
+          >
+            <thead class="bg-gray-100">
+              <tr>
+                <th class="p-3 text-left">No</th>
+                <th class="p-3 text-left">Judul</th>
+                <th class="p-3 text-left">Kategori</th>
+                <th class="p-3 text-left">Status</th>
+                <th class="p-3 text-left">Tanggal</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/10.10.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore-compat.js"></script>
+
+    <script>
+      const firebaseConfig = {
+        apiKey: "AIzaSyBFlphgO7PoiZ_M_zgmMwXGZ-9Ef_cbcpQ",
+        authDomain: "uinsolve.firebaseapp.com",
+        projectId: "uinsolve",
+        storageBucket: "uinsolve.appspot.com",
+        messagingSenderId: "649550938012",
+        appId: "1:649550938012:web:26bd721c2f42febf865259",
+        measurementId: "G-76W5Y9D5S8",
+      };
+      firebase.initializeApp(firebaseConfig);
+      const db = firebase.firestore();
+
+      async function muatLaporan() {
+        const insidenSnapshot = await db.collection("insiden").get();
+        const pelayananSnapshot = await db.collection("pelayanan").get();
+
+        const totalInsiden = insidenSnapshot.size;
+        const totalPermintaan = pelayananSnapshot.size;
+
+        let totalSelesai = 0;
+        const laporanGabungan = [];
+
+        insidenSnapshot.forEach((doc) => {
+          const data = doc.data();
+          if (data.status === "Selesai") totalSelesai++;
+          laporanGabungan.push({ ...data, tipe: "Insiden" });
+        });
+
+        pelayananSnapshot.forEach((doc) => {
+          const data = doc.data();
+          if (data.status === "Selesai") totalSelesai++;
+          laporanGabungan.push({ ...data, tipe: "Permintaan" });
+        });
+
+        // Update ringkasan
+        document.getElementById("totalInsiden").textContent = totalInsiden;
+        document.getElementById("totalPermintaan").textContent =
+          totalPermintaan;
+        document.getElementById("totalSelesai").textContent = totalSelesai;
+
+        // Tabel
+        const tbody = document.querySelector("#tabelLaporan tbody");
+        tbody.innerHTML = "";
+        laporanGabungan
+          .sort((a, b) => b.tanggal?.seconds - a.tanggal?.seconds)
+          .slice(0, 10)
+          .forEach((item, i) => {
+            const tanggal =
+              item.tanggal?.toDate().toLocaleDateString("id-ID") || "-";
+            tbody.innerHTML += `
+              <tr>
+                <td class="p-3">${i + 1}</td>
+                <td class="p-3">${item.judul}</td>
+                <td class="p-3">${item.kategori}</td>
+                <td class="p-3">${item.status}</td>
+                <td class="p-3">${tanggal}</td>
+              </tr>
+            `;
+          });
+
+        // Grafik
+        renderChartStatus(insidenSnapshot, pelayananSnapshot);
+      }
+
+      function renderChartStatus(snapshotInsiden, snapshotPermintaan) {
+        const hitungStatus = (snapshot) => {
+          const map = { Baru: 0, Diproses: 0, Selesai: 0 };
+          snapshot.forEach((doc) => {
+            const status = doc.data().status;
+            if (map[status] !== undefined) map[status]++;
+          });
+          return map;
+        };
+
+        const statusInsiden = hitungStatus(snapshotInsiden);
+        const statusPermintaan = hitungStatus(snapshotPermintaan);
+
+        new Chart(document.getElementById("grafikStatusInsiden"), {
+          type: "doughnut",
+          data: {
+            labels: ["Baru", "Diproses", "Selesai"],
+            datasets: [
+              {
+                data: Object.values(statusInsiden),
+                backgroundColor: ["#facc15", "#60a5fa", "#4ade80"],
+              },
+            ],
+          },
+          options: {
+            plugins: {
+              title: {
+                display: true,
+                text: "Status Insiden",
+              },
+            },
+          },
+        });
+
+        new Chart(document.getElementById("grafikStatusPermintaan"), {
+          type: "doughnut",
+          data: {
+            labels: ["Baru", "Diproses", "Selesai"],
+            datasets: [
+              {
+                data: Object.values(statusPermintaan),
+                backgroundColor: ["#facc15", "#60a5fa", "#4ade80"],
+              },
+            ],
+          },
+          options: {
+            plugins: {
+              title: {
+                display: true,
+                text: "Status Permintaan",
+              },
+            },
+          },
+        });
+      }
+
+      function eksporPDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+
+        doc.text("Laporan Layanan TI", 14, 14);
+        const headers = [["No", "Judul", "Kategori", "Status", "Tanggal"]];
+        const rows = [];
+        document.querySelectorAll("#tabelLaporan tbody tr").forEach((tr) => {
+          const row = [];
+          tr.querySelectorAll("td").forEach((td) => row.push(td.innerText));
+          rows.push(row);
+        });
+
+        doc.autoTable({
+          head: headers,
+          body: rows,
+          startY: 20,
+          styles: { fontSize: 10 },
+          theme: "striped",
+        });
+
+        doc.save("laporan-layanan-ti.pdf");
+      }
+
+      muatLaporan();
+    </script>
+  </body>
+</html>

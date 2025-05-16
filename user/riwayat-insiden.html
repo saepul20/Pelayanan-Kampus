@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Riwayat Insiden - UINSolve</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        font-family: "Inter", sans-serif;
+      }
+    </style>
+  </head>
+  <body class="bg-gray-50 text-gray-800">
+    <!-- Navbar -->
+    <nav class="bg-white shadow-sm">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between h-16 items-center">
+          <span class="text-xl font-semibold text-indigo-600">UINSolve</span>
+          <div class="hidden md:flex md:space-x-6 ml-10">
+            <a
+              href="index.html"
+              class="text-gray-700 hover:text-indigo-600 font-medium"
+              >Dashboard</a
+            >
+            <a
+              href="insiden.html"
+              class="text-gray-700 hover:text-indigo-600 font-medium"
+              >Pelaporan</a
+            >
+            <a href="riwayat-insiden.html" class="text-indigo-600 font-semibold"
+              >Riwayat</a
+            >
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-5xl mx-auto px-6 py-10">
+      <h1 class="text-3xl font-bold text-center mb-8">
+        Riwayat Laporan Insiden Anda
+      </h1>
+      <div id="riwayatContainer" class="space-y-4">
+        <p class="text-center text-gray-500">Memuat data...</p>
+      </div>
+    </main>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.10.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.10.0/firebase-auth-compat.js"></script>
+
+    <script>
+      const firebaseConfig = {
+        apiKey: "AIzaSyBFlphgO7PoiZ_M_zgmMwXGZ-9Ef_cbcpQ",
+        authDomain: "uinsolve.firebaseapp.com",
+        projectId: "uinsolve",
+        storageBucket: "uinsolve.appspot.com",
+        messagingSenderId: "649550938012",
+        appId: "1:649550938012:web:26bd721c2f42febf865259",
+        measurementId: "G-76W5Y9D5S8",
+      };
+
+      firebase.initializeApp(firebaseConfig);
+      const db = firebase.firestore();
+      const auth = firebase.auth();
+
+      function tampilkanRiwayat(uid) {
+        const container = document.getElementById("riwayatContainer");
+        container.innerHTML =
+          "<p class='text-center text-gray-500'>Memuat data...</p>";
+
+        db.collection("insiden")
+          // .where("uid", "==", uid)
+          .orderBy("tanggal", "desc")
+          .get()
+          .then((snapshot) => {
+            container.innerHTML = "";
+
+            if (snapshot.empty) {
+              container.innerHTML =
+                "<p class='text-gray-500 text-sm text-center'>Belum ada laporan.</p>";
+              return;
+            }
+
+            snapshot.forEach((doc) => {
+              const data = doc.data();
+              let tanggal = "Tanggal tidak tersedia";
+
+              try {
+                if (data.tanggal instanceof firebase.firestore.Timestamp) {
+                  tanggal = data.tanggal.toDate().toLocaleDateString("id-ID");
+                } else if (typeof data.tanggal === "string") {
+                  const parts = data.tanggal.split("/");
+                  if (parts.length === 3) {
+                    const formattedDate = `${parts[2]}-${parts[1].padStart(
+                      2,
+                      "0"
+                    )}-${parts[0].padStart(2, "0")}`;
+                    tanggal = new Date(formattedDate).toLocaleDateString(
+                      "id-ID"
+                    );
+                  }
+                }
+              } catch (e) {
+                console.error("Error parsing tanggal:", data.tanggal);
+              }
+
+              container.innerHTML += `
+                <div class="border p-4 rounded-md bg-white shadow-sm">
+                  <div class="flex justify-between items-center mb-1">
+                    <strong class="text-gray-800">${data.judul}</strong>
+                    <span class="text-xs px-2 py-1 ${
+                      data.status === "Diproses"
+                        ? "bg-yellow-100 text-yellow-800"
+                        : "bg-gray-200 text-gray-800"
+                    } rounded-full">${data.status || "Baru"}</span>
+                  </div>
+                  <p class="text-gray-600 text-sm">${data.deskripsi}</p>
+                  <p class="text-xs text-gray-400 mt-2">Dilaporkan: ${tanggal}</p>
+                </div>
+              `;
+            });
+          })
+          .catch((error) => {
+            console.error("Gagal memuat data:", error);
+            container.innerHTML =
+              "<p class='text-red-500 text-center'>Gagal memuat data.</p>";
+          });
+      }
+
+      auth.onAuthStateChanged((user) => {
+        if (user) {
+          tampilkanRiwayat(user.uid);
+        } else {
+          window.location.href = "signin.html";
+        }
+      });
+    </script>
+  </body>
+</html>
